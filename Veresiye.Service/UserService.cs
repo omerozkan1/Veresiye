@@ -10,11 +10,11 @@ namespace Veresiye.Service
 {
     public class UserService : IUserService
     {
-        public readonly IUnitOfWork unifOfWork;
+        public readonly IUnitOfWork unitOfWork;
         private readonly IRepository<User> userRepository;
-        public UserService(IUnitOfWork ıunitOfWork,IRepository<User> userRepository)
+        public UserService(IUnitOfWork unitOfWork,IRepository<User> userRepository)
         {
-            this.unifOfWork = unifOfWork;
+            this.unitOfWork = unitOfWork;
             this.userRepository = userRepository;
         }
         public IEnumerable<User> GetAll()
@@ -30,39 +30,42 @@ namespace Veresiye.Service
             
         }
 
-        public bool Register(string userName, string password, string confirmPassword)
+        public RegisterStatus Register(User user)
         {
-            userName = userName.ToLower();
+            user.UserName = user.UserName.ToLower();
             //validasyonlar
-           if (password == confirmPassword)
+           
+           if(string.IsNullOrEmpty(user.UserName))
             {
-                return false;
-            }
-            else if(string.IsNullOrEmpty(userName))
-            {
-                return false;
+                return RegisterStatus.InvalidFields;
             }
            else
             {
-                var user = userRepository.Get(x => x.UserName == userName);
-                if (user != null)
+                var newUser = userRepository.Get(x => x.UserName == user.UserName);
+                if (newUser != null)
                 {
-                    return false;
+                    return RegisterStatus.UserAlreadyExists;
                 }
             }
-            var newUser = new User();
-            newUser.UserName = userName;
-            newUser.Password = password;
-            userRepository.Insert(newUser);
-            unifOfWork.SaveChanges();
-            return true;
+            
+            userRepository.Insert(user);
+            unitOfWork.SaveChanges();
+            return RegisterStatus.Success;
         }
     }
     public interface IUserService
     {
         User Login(string userName, string password);
-        bool Register(string userName, string password, string confirmPassword);
-        IEnumerable <User> GetAll();
+        RegisterStatus Register(User user);
+        IEnumerable<User> GetAll();
+        
+    }
+        public enum RegisterStatus
+        {
+            Success = 1,
+            InvalidFields = 2,
+            UserAlreadyExists = 3
+        }
 
     }
-}
+
